@@ -1,99 +1,109 @@
 import express, { Request, Response } from 'express';
-import db, { UserBody } from './db-class';
+import db, { UserBody } from './config/json-db';
+import sequelize from './config/sequelize-db';
+import { User } from './models/User.model';
+import { ValidationError, ValidationErrorItem } from 'sequelize';
+
 
 const app = express();
 app.use(express.json());
 const port = process.env.PORT || 3000;
 
+sequelize.authenticate().then(() => {
+  console.log('DB Connected successfully...',);
+}).catch((error) => {
+  console.log('Error while connecting to DB', error);
+})
+
 // Create User
 app.post('/users', async (req: Request, res: Response) => {
   const { name, email } = req.body;
-  const newUser = { id: Date.now(), name, email };
 
   try {
+    const userInfo = await User.create({ name: name, email: email })
 
-    const checkReq = validateRequest(req);
+    res.status(201).json(userInfo);
 
-    if (!checkReq.status) {
-      throw new Error(checkReq.message);
+  } catch (error: any) {
+
+    if (error instanceof ValidationError) {
+      const messages = error.errors.map((errItem: ValidationErrorItem) => ({
+        field: errItem.path,
+        message: errItem.message
+      }));
+      res.status(400).json({ errors: messages });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+// Fetch All Users
+app.get('/users', async (req: Request, res: Response) => {
+  const users = await User.findAll();
+  res.json(users);
+});
+
+// Fetch Individual
+app.get('/users/:id', async (req: Request, res: Response) => {
+  try {
+    const user = await User.findByPk(req.params.id)
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    const users = await db.getData('/users') as UserBody[];
-    const userExists = users.find(row => row.email == email);
-
-    if (userExists) {
-      throw new Error('Email already exists');
-    }
-
-    users.push(newUser);
-    await db.push('/users', users, false);
-    res.status(201).json(newUser);
+    res.json(user);
 
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
 });
 
-// Fetch All Users
-app.get('/users', async (req: Request, res: Response) => {
-  const users = await db.getData('/users');
-  res.json(users);
-});
-
-// Fetch Individual
-app.get('/users/:id', async (req: Request, res: Response) => {
-  const users = await db.getData('/users') as UserBody[];
-  const user = users.find(row => row.id == parseInt(req.params.id));
-
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
-  }
-
-  res.json(user);
-});
-
 // Update User
 app.put('/users/:id', async (req: Request, res: Response) => {
-  const { name, email } = req.body;
-  const users = await db.getData('/users') as UserBody[];
-  const userIndex = users.findIndex(row => row.id === parseInt(req.params.id));
+  try {
+    const { name, email } = req.body;
+    const user = await User.findByPk(req.params.id)
 
-  if (userIndex === -1) {
-    return res.status(404).json({ message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await user.update({ name: name || user.name, email: email || user.email, })
+
+    res.json(user);
+  } catch (error: any) {
+    if (error instanceof ValidationError) {
+      const messages = error.errors.map((errItem: ValidationErrorItem) => ({
+        field: errItem.path,
+        message: errItem.message
+      }));
+      res.status(400).json({ errors: messages });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
   }
-
-  users[userIndex].name = name || users[userIndex].name;
-  users[userIndex].email = email || users[userIndex].email;
-  db.push('/users', users);
-
-  res.json(users[userIndex]);
 });
 
 // Delete (DELETE)
 app.delete('/users/:id', async (req: Request, res: Response) => {
-  let users = await db.getData('/users') as UserBody[];
-  users = users.filter((user: { id: number }) => user.id !== parseInt(req.params.id));
-  db.push('/users', users);
+  try {
+    const user = await User.findByPk(req.params.id)
 
-  res.status(204).send();
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await user.destroy();
+
+    res.status(200).json({ message: 'User Deleted Successfully' });
+
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
 });
 
-const validateRequest = (req: Request) => {
-  const { name, email } = req.body;
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-
-  if (!name || !email) {
-    return { status: false, message: 'Name or Email required' }
-  }
-
-  if (!isEmail) {
-    return { status: false, message: 'Valid Email required' }
-  }
-
-  return { status: true, message: 'Success' }
-
-}
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
