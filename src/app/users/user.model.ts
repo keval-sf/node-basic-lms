@@ -10,7 +10,7 @@ interface UserAttributes {
 @Table({
   schema: 'users.master',
   tableName: 'users',
-  timestamps: false,
+  timestamps: true,
 })
 export class User extends Model<UserAttributes> implements UserAttributes {
   @PrimaryKey

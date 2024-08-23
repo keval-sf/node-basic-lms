@@ -13,7 +13,7 @@ interface CustomerAttributes {
 @Table({
   schema: 'users.master',
   tableName: 'customers',
-  timestamps: false,
+  timestamps: true,
 })
 export class Customer extends Model<CustomerAttributes> implements CustomerAttributes {
   @PrimaryKey

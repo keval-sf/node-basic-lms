@@ -8,7 +8,7 @@ interface RoleAttributes {
 @Table({
   schema: 'common.master',
   tableName: 'roles',
-  timestamps: false,
+  timestamps: true,
 })
 export class Role extends Model<RoleAttributes> implements RoleAttributes {
   @PrimaryKey
