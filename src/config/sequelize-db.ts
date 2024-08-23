@@ -1,14 +1,14 @@
 import { Sequelize } from 'sequelize-typescript';
-import { User } from '../models/User.model'; // Import your models
+import { User, Customer, Role } from '../models';
 
 const sequelize = new Sequelize({
   dialect: 'postgres',
-  host: 'localhost', // Change if needed
-  port: 5433,        // Default PostgreSQL port
+  host: 'localhost',
+  port: 5433,
   username: 'postgres',
   password: 'root',
   database: 'lb4_db',
-  models: [User],    // Add your models here
+  models: [User, Customer, Role],
 });
 
 

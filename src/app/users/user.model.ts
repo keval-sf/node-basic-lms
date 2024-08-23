@@ -1,7 +1,8 @@
-import { Table, Column, Model, DataType, PrimaryKey, AutoIncrement, Unique } from 'sequelize-typescript';
+import { AutoIncrement, Column, DataType, HasMany, Model, PrimaryKey, Table, Unique } from 'sequelize-typescript';
+import { Customer } from '../../models';
 
 interface UserAttributes {
-  id?: number;
+  userId?: number;
   name: string;
   email: string;
 }
@@ -48,4 +49,7 @@ export class User extends Model<UserAttributes> implements UserAttributes {
     },
   })
   email!: string;
+
+  @HasMany(() => Customer)
+  customers!: Customer[];
 }
